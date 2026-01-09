@@ -57,19 +57,30 @@
             font-size: 14px;
         }
 
-        input[type="date"] {
+        input[type="text"] {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 16px;
             transition: all 0.3s;
+            font-family: monospace;
         }
 
-        input[type="date"]:focus {
+        input[type="text"]:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="text"]::placeholder {
+            color: #aaa;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
         }
 
         .btn {
@@ -201,12 +212,14 @@
         <form id="formulario">
             <div class="form-group">
                 <label for="fechaInicio">📅 Fecha Inicio</label>
-                <input type="date" id="fechaInicio" required>
+                <input type="text" id="fechaInicio" placeholder="DD/MM/AAAA" maxlength="10" required>
+                <p class="helper-text">Ejemplo: 01/12/2025</p>
             </div>
 
             <div class="form-group">
                 <label for="fechaFin">📅 Fecha Fin</label>
-                <input type="date" id="fechaFin" required>
+                <input type="text" id="fechaFin" placeholder="DD/MM/AAAA" maxlength="10" required>
+                <p class="helper-text">Ejemplo: 31/12/2025</p>
             </div>
 
             <button type="submit" class="btn" id="btnCalcular">
@@ -241,14 +254,70 @@
         const btnCalcular = document.getElementById('btnCalcular');
         const mensaje = document.getElementById('mensaje');
         const resultado = document.getElementById('resultado');
+        const inputInicio = document.getElementById('fechaInicio');
+        const inputFin = document.getElementById('fechaFin');
 
-        // Establecer fecha por defecto (último mes)
+        // Formatear automáticamente mientras se escribe
+        function formatearFecha(input) {
+            input.addEventListener('input', function (e) {
+                let valor = e.target.value.replace(/\D/g, ''); // Solo números
+
+                if (valor.length >= 2) {
+                    valor = valor.slice(0, 2) + '/' + valor.slice(2);
+                }
+                if (valor.length >= 5) {
+                    valor = valor.slice(0, 5) + '/' + valor.slice(5, 9);
+                }
+
+                e.target.value = valor;
+            });
+        }
+
+        formatearFecha(inputInicio);
+        formatearFecha(inputFin);
+
+        // Establecer fecha por defecto (primer y último día del mes actual)
         const hoy = new Date();
-        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-        const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+        const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
 
-        document.getElementById('fechaInicio').valueAsDate = primerDiaMes;
-        document.getElementById('fechaFin').valueAsDate = ultimoDiaMes;
+        inputInicio.value = formatearFechaDD_MM_YYYY(primerDia);
+        inputFin.value = formatearFechaDD_MM_YYYY(ultimoDia);
+
+        function formatearFechaDD_MM_YYYY(fecha) {
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+            const anio = fecha.getFullYear();
+            return `${dia}/${mes}/${anio}`;
+        }
+
+        function convertirAFormatoISO(fechaDD_MM_YYYY) {
+            const partes = fechaDD_MM_YYYY.split('/');
+            if (partes.length !== 3) return null;
+
+            const dia = partes[0];
+            const mes = partes[1];
+            const anio = partes[2];
+
+            return `${anio}-${mes}-${dia}`;
+        }
+
+        function validarFecha(fechaStr) {
+            const partes = fechaStr.split('/');
+            if (partes.length !== 3) return false;
+
+            const dia = parseInt(partes[0], 10);
+            const mes = parseInt(partes[1], 10);
+            const anio = parseInt(partes[2], 10);
+
+            if (isNaN(dia) || isNaN(mes) || isNaN(anio)) return false;
+            if (dia < 1 || dia > 31) return false;
+            if (mes < 1 || mes > 12) return false;
+            if (anio < 2020 || anio > 2030) return false;
+
+            const fecha = new Date(anio, mes - 1, dia);
+            return fecha.getDate() === dia && fecha.getMonth() === mes - 1 && fecha.getFullYear() === anio;
+        }
 
         function mostrarMensaje(texto, tipo) {
             mensaje.textContent = texto;
@@ -279,15 +348,25 @@
         formulario.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const fechaInicio = document.getElementById('fechaInicio').value;
-            const fechaFin = document.getElementById('fechaFin').value;
+            const fechaInicioStr = inputInicio.value;
+            const fechaFinStr = inputFin.value;
 
-            // Validar fechas
-            if (!fechaInicio || !fechaFin) {
-                mostrarMensaje('❌ Por favor completá ambas fechas', 'error');
+            // Validar formato
+            if (!validarFecha(fechaInicioStr)) {
+                mostrarMensaje('❌ Fecha de inicio inválida. Usa formato DD/MM/AAAA', 'error');
                 return;
             }
 
+            if (!validarFecha(fechaFinStr)) {
+                mostrarMensaje('❌ Fecha de fin inválida. Usa formato DD/MM/AAAA', 'error');
+                return;
+            }
+
+            // Convertir a formato ISO para la API
+            const fechaInicio = convertirAFormatoISO(fechaInicioStr);
+            const fechaFin = convertirAFormatoISO(fechaFinStr);
+
+            // Validar que fecha inicio sea anterior a fecha fin
             if (new Date(fechaInicio) > new Date(fechaFin)) {
                 mostrarMensaje('❌ La fecha de inicio debe ser anterior a la fecha de fin', 'error');
                 return;
