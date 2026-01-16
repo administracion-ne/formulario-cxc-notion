@@ -395,6 +395,12 @@
                 }
 
                 const data = await response.json();
+                
+                // DEBUG: Ver qué datos llegan
+                console.log('Respuesta del webhook:', data);
+                console.log('montoTotal:', data.montoTotal, 'tipo:', typeof data.montoTotal);
+                console.log('montoCobrado:', data.montoCobrado, 'tipo:', typeof data.montoCobrado);
+                console.log('saldoPendiente:', data.saldoPendiente, 'tipo:', typeof data.saldoPendiente);
 
                 mostrarMensaje('✅ Cálculo completado exitosamente', 'exito');
                 mostrarResultado(data);
@@ -404,10 +410,4 @@
                 mostrarMensaje('❌ Error al procesar la solicitud. Verificá que n8n esté corriendo.', 'error');
             } finally {
                 btnCalcular.disabled = false;
-                btnCalcular.innerHTML = 'Calcular Totales';
-            }
-        });
-    </script>
-</body>
-
-</html>
+       
